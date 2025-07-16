@@ -1,29 +1,16 @@
 import torchaudio
 import torch
-_resample_buffer: dict[int, torchaudio.transforms.Resample] = {}
-
+import librosa
 
 def extract_speech_token(model, feature_extractor, utts):
     dtype = model.conv1.weight.dtype
     with torch.no_grad():
         audios, indices = [], []
         for idx, utt in enumerate(utts):
-            if isinstance(utt, tuple):
+            if isinstance(utt, tuple) or isinstance(utt, list):
                 audio, sample_rate = utt
             else:
-                audio, sample_rate = torchaudio.load(utt)
-            audio = audio.to(torch.cuda.current_device())
-            if sample_rate != 16000:
-                if sample_rate not in _resample_buffer:
-                    _resample_buffer[sample_rate] = torchaudio.transforms.Resample(
-                        orig_freq=sample_rate,
-                        new_freq=16000
-                    ).to(torch.cuda.current_device())
-                audio = _resample_buffer[sample_rate](audio)
-            # if audio.shape[0] > 1:
-            #     audio = audio[:1]
-            audio = audio[0]
-            audio = audio.cpu().numpy()
+                audio, sample_rate = librosa.load(utt, sr = 16000)
             time_step = 0
             while time_step * 16000 < audio.shape[0]:
                 audio_segment = audio[time_step * 16000: (time_step + 30) * 16000]
@@ -40,7 +27,6 @@ def extract_speech_token(model, feature_extractor, utts):
                                          padding="longest", pad_to_multiple_of=stride)
             features["input_features"] = features["input_features"].to(torch.cuda.current_device()).to(dtype)
             features["attention_mask"] = features["attention_mask"].to(torch.cuda.current_device())
-            # import ipdb; ipdb.set_trace()
             outputs = model(**features)
             speech_tokens = outputs.quantized_token_ids
             attention_mask = features.attention_mask[:, ::model.conv1.stride[0] * model.conv2.stride[0]]
