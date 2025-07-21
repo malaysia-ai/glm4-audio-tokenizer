@@ -1,16 +1,11 @@
-import torchaudio
 import torch
-import librosa
 
 def extract_speech_token(model, feature_extractor, utts):
     dtype = model.conv1.weight.dtype
     with torch.no_grad():
         audios, indices = [], []
         for idx, utt in enumerate(utts):
-            if isinstance(utt, tuple) or isinstance(utt, list):
-                audio, sample_rate = utt
-            else:
-                audio, sample_rate = librosa.load(utt, sr = 16000)
+            audio, sample_rate = utt
             time_step = 0
             while time_step * 16000 < audio.shape[0]:
                 audio_segment = audio[time_step * 16000: (time_step + 30) * 16000]
