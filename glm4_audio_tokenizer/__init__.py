@@ -33,7 +33,7 @@ class Glm4Tokenizer(nn.Module):
                 y, sr = librosa.load(s, sr = sample_rate)
             elif isinstance(s, tuple) or isinstance(s, list):
                 y, sr = s
-                if y > 1:
+                if y.ndim > 1:
                     y = y.mean(0)
                 if sr != sample_rate:
                     y = librosa.resample(y, orig_sr = sr, target_sr = sample_rate)
